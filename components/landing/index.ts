@@ -1,0 +1,12 @@
+export { Header } from "./Header";
+export { Hero } from "./Hero";
+export { VoiceWaveform } from "./VoiceWaveform";
+export { ProblemSection } from "./ProblemSection";
+export { SolutionSection } from "./SolutionSection";
+export { FeaturesSection } from "./FeaturesSection";
+export { DifferenceSection } from "./DifferenceSection";
+export { WhoItsForSection } from "./WhoItsForSection";
+export { SecuritySection } from "./SecuritySection";
+export { SocialProofSection } from "./SocialProofSection";
+export { CTASection } from "./CTASection";
+export { Footer } from "./Footer";
