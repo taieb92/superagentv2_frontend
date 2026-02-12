@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Generated files
+lib/api/generated/
+**/generated/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

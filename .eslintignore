@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Generated files
+lib/api/generated/
+**/generated/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Config files
+next.config.js
