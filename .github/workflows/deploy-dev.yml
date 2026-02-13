@@ -1,0 +1,118 @@
+name: Deploy DEV (Frontend)
+
+on:
+  push:
+    branches:
+      - develop
+
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+        default: ""
+      commit:
+        description: "Optional commit hash to deploy (leave empty for latest develop)"
+        required: false
+        default: ""
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate confirmation
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
+            echo "❌ Deployment cancelled. Type 'deploy' to confirm."
+            exit 1
+          fi
+          echo "✅ Deployment confirmed"
+
+      - name: Deploy to server (zero-downtime)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_PORT }}
+          script: |
+            set -e
+            echo "🚀 Starting DEV deployment..."
+
+            cd /srv/apps/superagent/superagent-frontend
+
+            echo "📥 Fetching repository..."
+            git fetch origin
+
+            if [ -n "${{ github.event.inputs.commit }}" ]; then
+              echo "🔖 Deploying specific commit: ${{ github.event.inputs.commit }}"
+              git checkout ${{ github.event.inputs.commit }}
+            else
+              echo "🌿 Deploying latest develop branch"
+              git checkout develop
+              git pull origin develop
+            fi
+
+            # Navigate to deployment folder
+            cd deployment
+
+            # Make shell script executable
+            chmod +x deploy-dev.sh
+
+            # Stop existing container
+            echo "🛑 Stopping existing container..."
+            ./deploy-dev.sh down || true
+
+            # Build new image
+            echo "🔨 Building new image..."
+            ./deploy-dev.sh build --no-cache
+
+            # Start new container
+            echo "🔄 Starting new container..."
+            ./deploy-dev.sh up -d
+
+            # Wait for new container to be healthy
+            echo "⏳ Waiting for new container..."
+            sleep 8
+
+            # Verify it's running
+            if ! docker ps --filter "name=superagent-frontend-dev" --filter "status=running" | grep -q superagent-frontend-dev; then
+              echo "❌ New container failed to start!"
+              exit 1
+            fi
+
+            # Clean up old images to save space
+            echo "🗑️ Cleaning up old images..."
+            docker image prune -af || true
+
+            # Show status
+            echo "📊 Container status:"
+            docker ps --filter "name=superagent-frontend-dev"
+
+            # Show logs
+            echo "📝 Recent logs:"
+            docker logs superagent-frontend-dev --tail 50 || true
+
+            echo "✅ DEV deployment complete!"
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "### ✅ Deployment Successful! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** develop" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.event.inputs.commit || github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚡ **Zero-downtime deployment**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 Check logs: http://your-server:9999 (Dozzle)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deployment failed
+        if: failure()
+        run: |
+          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
+          echo "Check logs above. No changes were finalized." >> $GITHUB_STEP_SUMMARY
