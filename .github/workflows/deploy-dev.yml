@@ -1,5 +1,4 @@
 name: Deploy DEV (Frontend)
-
 on:
   workflow_dispatch:
     inputs:
@@ -9,11 +8,9 @@ on:
       commit:
         description: "Optional commit hash"
         required: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Validate confirmation
         run: |
@@ -69,22 +66,21 @@ jobs:
           port: ${{ secrets.DEV_PORT }}
           script: |
             set -e
-
             cd /srv/apps/superagent/superagent-frontend
 
-            echo "🧹 Cleaning possible broken compose file..."
-            rm -rf docker-compose.dev.yml
+            echo "🧹 Stopping existing containers..."
+            docker compose -f docker-compose.dev.yml down 2>/dev/null || true
 
             echo "📦 Loading Docker image..."
             docker load < frontend-dev.tar.gz
 
-            echo "🚀 Starting container..."
+            echo "🚀 Starting fresh container..."
             docker compose -f docker-compose.dev.yml up -d --force-recreate
 
-            echo "🧹 Cleaning unused images..."
+            echo "🧹 Cleaning old Docker images..."
             docker image prune -af || true
 
-            echo "🧹 Cleaning tar file..."
+            echo "🧹 Removing temporary files..."
             rm -f frontend-dev.tar.gz
 
             echo "✅ Deployment complete!"
