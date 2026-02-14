@@ -54,11 +54,8 @@ jobs:
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ secrets.DEV_PORT }}
-          source: |
-            frontend-dev.tar.gz
-            deployment/docker-compose.dev.yml
+          source: "frontend-dev.tar.gz,deployment/docker-compose.dev.yml"
           target: "/srv/apps/superagent/superagent-frontend/"
-          strip_components: 1
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
