@@ -82,7 +82,7 @@ jobs:
             docker load < frontend-dev.tar.gz
 
             echo "🚀 Starting container..."
-            docker compose -f deployment/docker-compose.dev.yml up -d --force-recreate
+            docker compose -f docker-compose.dev.yml up -d --force-recreate
 
             echo "🧹 Cleaning old images..."
             docker image prune -af || true
