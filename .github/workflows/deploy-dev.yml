@@ -64,7 +64,7 @@ jobs:
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ secrets.DEV_PORT }}
-          source: "superagent-frontend/deployment/docker-compose.dev.yml"
+          source: "deployment/docker-compose.dev.yml"
           target: "/srv/apps/superagent/superagent-frontend"
 
       - name: Deploy on server
