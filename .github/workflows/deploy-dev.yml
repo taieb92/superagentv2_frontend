@@ -1,20 +1,14 @@
 name: Deploy DEV (Frontend)
 
 on:
-  push:
-    branches:
-      - develop
-
   workflow_dispatch:
     inputs:
       confirm:
         description: 'Type "deploy" to confirm'
         required: true
-        default: ""
       commit:
-        description: "Optional commit hash to deploy (leave empty for latest develop)"
+        description: "Optional commit hash"
         required: false
-        default: ""
 
 jobs:
   deploy:
@@ -22,15 +16,58 @@ jobs:
 
     steps:
       - name: Validate confirmation
-        if: github.event_name == 'workflow_dispatch'
         run: |
           if [ "${{ github.event.inputs.confirm }}" != "deploy" ]; then
-            echo "❌ Deployment cancelled. Type 'deploy' to confirm."
+            echo "❌ Deployment cancelled."
             exit 1
           fi
           echo "✅ Deployment confirmed"
 
-      - name: Deploy to server (zero-downtime)
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit || github.ref_name }}
+
+      - name: Set image tag
+        run: echo "IMAGE_TAG=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }} \
+            --build-arg NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }} \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }} \
+            --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_URL }} \
+            --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_URL }} \
+            --build-arg NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_IN_FORCE_REDIRECT_URL }} \
+            --build-arg NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL=${{ secrets.NEXT_PUBLIC_CLERK_SIGN_UP_FORCE_REDIRECT_URL }} \
+            -t superagent-frontend:dev \
+            ./superagent-frontend
+
+      - name: Save image
+        run: docker save superagent-frontend:dev | gzip > frontend-dev.tar.gz
+
+      - name: Copy image to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_PORT }}
+          source: "frontend-dev.tar.gz"
+          target: "/srv/apps/superagent/superagent-frontend"
+          
+      - name: Copy Docker Compose
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          port: ${{ secrets.DEV_PORT }}
+          source: "superagent-frontend/deployment/docker-compose.dev.yml"
+          target: "/srv/apps/superagent/superagent-frontend"
+        
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEV_HOST }}
@@ -39,80 +76,15 @@ jobs:
           port: ${{ secrets.DEV_PORT }}
           script: |
             set -e
-            echo "🚀 Starting DEV deployment..."
-
             cd /srv/apps/superagent/superagent-frontend
 
-            echo "📥 Fetching repository..."
-            git fetch origin
+            echo "📦 Loading Docker image..."
+            docker load < frontend-dev.tar.gz
 
-            if [ -n "${{ github.event.inputs.commit }}" ]; then
-              echo "🔖 Deploying specific commit: ${{ github.event.inputs.commit }}"
-              git checkout ${{ github.event.inputs.commit }}
-            else
-              echo "🌿 Deploying latest develop branch"
-              git checkout develop
-              git pull origin develop
-            fi
+            echo "🚀 Starting container..."
+            docker compose -f docker-compose.dev.yml up -d --force-recreate
 
-            # Navigate to deployment folder
-            cd deployment
-
-            # Make shell script executable
-            chmod +x deploy-dev.sh
-
-            # Stop existing container
-            echo "🛑 Stopping existing container..."
-            ./deploy-dev.sh down || true
-
-            # Build new image
-            echo "🔨 Building new image..."
-            ./deploy-dev.sh build --no-cache
-
-            # Start new container
-            echo "🔄 Starting new container..."
-            ./deploy-dev.sh up -d
-
-            # Wait for new container to be healthy
-            echo "⏳ Waiting for new container..."
-            sleep 8
-
-            # Verify it's running
-            if ! docker ps --filter "name=superagent-frontend-dev" --filter "status=running" | grep -q superagent-frontend-dev; then
-              echo "❌ New container failed to start!"
-              exit 1
-            fi
-
-            # Clean up old images to save space
-            echo "🗑️ Cleaning up old images..."
+            echo "🧹 Cleaning old images..."
             docker image prune -af || true
 
-            # Show status
-            echo "📊 Container status:"
-            docker ps --filter "name=superagent-frontend-dev"
-
-            # Show logs
-            echo "📝 Recent logs:"
-            docker logs superagent-frontend-dev --tail 50 || true
-
-            echo "✅ DEV deployment complete!"
-
-      - name: Deployment summary
-        if: success()
-        run: |
-          echo "### ✅ Deployment Successful! 🎉" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** develop" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.event.inputs.commit || github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚡ **Zero-downtime deployment**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 Check logs: http://your-server:9999 (Dozzle)" >> $GITHUB_STEP_SUMMARY
-
-      - name: Deployment failed
-        if: failure()
-        run: |
-          echo "### ❌ Deployment Failed" >> $GITHUB_STEP_SUMMARY
-          echo "Check logs above. No changes were finalized." >> $GITHUB_STEP_SUMMARY
+            echo "✅ Deployment complete!"
