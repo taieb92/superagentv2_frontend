@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Download,
 } from "lucide-react";
+import { Template, checkTemplate } from "@pdfme/common";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -26,8 +27,13 @@ import {
 import { useGetDealQuery } from "@/lib/api/generated/fetch-client/Query";
 import * as Types from "@/lib/api/generated/fetch-client";
 import { toast } from "sonner";
-import { createTemplateFromLayout } from "@/components/superagent/contracts/contract-api";
+import {
+  fetchPdfmeLayout,
+  createTemplateFromLayout,
+} from "@/components/superagent/contracts/contract-api";
+import { removeTitleFromTemplate } from "@/lib/helper";
 import { useUser } from "@clerk/nextjs";
+import { logger } from "@/lib/utils/logger";
 
 function CounterOfferDetailsContent() {
   const params = useParams();
@@ -80,12 +86,38 @@ function CounterOfferDetailsContent() {
   const createCounterMutation = useCreateCounterOffer(dealId);
   const uploadMutation = useUploadCounterOfferPdf(dealId);
 
-  // Extract template and data from counter offer
-  const template = useMemo(() => {
-    if (!counterOffer?.fieldsJson) return null;
-    // TODO: Template should come from the deal's template, not from counter offer
-    return null;
-  }, [counterOffer?.fieldsJson]);
+  // Fetch pdfme template layout for counter offers
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false);
+
+  useEffect(() => {
+    if (!dealId || !counterOffer) return;
+    // If there's an uploaded PDF, we don't need the template
+    if (counterOffer.uploadedPdfUrl) return;
+
+    let cancelled = false;
+    const loadTemplate = async () => {
+      setIsLoadingTemplate(true);
+      try {
+        const layoutResponse = await fetchPdfmeLayout(dealId, "COUNTEROFFERS");
+        if (cancelled) return;
+        const rawTemplate = createTemplateFromLayout(layoutResponse);
+        checkTemplate(rawTemplate);
+        const cleanedTemplate = removeTitleFromTemplate
+          ? removeTitleFromTemplate(rawTemplate)
+          : rawTemplate;
+        setTemplate(cleanedTemplate);
+      } catch (e) {
+        if (cancelled) return;
+        logger.error("Failed to load counter offer template", e);
+        // Not critical — page will show "document not available" fallback
+      } finally {
+        if (!cancelled) setIsLoadingTemplate(false);
+      }
+    };
+    loadTemplate();
+    return () => { cancelled = true; };
+  }, [dealId, counterOffer]);
 
   const contractData = useMemo(() => {
     return counterOffer?.fieldsJson || {};
@@ -146,7 +178,7 @@ function CounterOfferDetailsContent() {
     }
   };
 
-  const isLoading = isLoadingDeal || isLoadingCounter;
+  const isLoading = isLoadingDeal || isLoadingCounter || isLoadingTemplate;
 
   if (isLoading) {
     return (

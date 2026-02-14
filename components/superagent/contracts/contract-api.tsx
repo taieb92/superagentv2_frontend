@@ -23,9 +23,10 @@ export interface AddendumItem {
  * Fetch the pdfme template layout for a deal
  */
 export async function fetchPdfmeLayout(
-  dealId: string
+  dealId: string,
+  type: string = "CONTRACT"
 ): Promise<PdfmeLayoutResponse> {
-  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/pdfme-layout`;
+  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/pdfme-layout?type=${encodeURIComponent(type)}`;
   const res = await getFetch().fetch(url, { method: "GET" });
 
   if (!res.ok) {
@@ -46,9 +47,10 @@ export async function fetchPdfmeLayout(
  * Fetch contract data for a deal
  */
 export async function fetchContractData(
-  dealId: string
+  dealId: string,
+  type: string = "CONTRACT"
 ): Promise<Record<string, any>> {
-  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/contract-data`;
+  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/contract-data?type=${encodeURIComponent(type)}`;
   const res = await getFetch().fetch(url, { method: "GET" });
 
   if (!res.ok) {
@@ -64,9 +66,10 @@ export async function fetchContractData(
  */
 export async function saveContractData(
   dealId: string,
-  data: Record<string, any>
+  data: Record<string, any>,
+  type: string = "CONTRACT"
 ): Promise<void> {
-  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/contract-data`;
+  const url = `${getBaseUrl()}/v1/deals/${encodeURIComponent(dealId)}/contract-data?type=${encodeURIComponent(type)}`;
   const res = await getFetch().fetch(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

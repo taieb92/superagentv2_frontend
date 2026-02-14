@@ -33,6 +33,7 @@ type ViewMode = "form" | "pdf";
 
 interface DocumentEditorProps {
   dealId?: string;
+  documentType?: string;
 }
 
 /**
@@ -44,7 +45,7 @@ interface DocumentEditorProps {
  * - Coordinate saving
  * - Provide UI controls
  */
-export function DocumentEditor({ dealId: propDealId }: DocumentEditorProps) {
+export function DocumentEditor({ dealId: propDealId, documentType = "CONTRACT" }: DocumentEditorProps) {
   const params = useParams();
   const dealId = propDealId || (params?.id as string);
   const queryClient = useQueryClient();
@@ -103,8 +104,8 @@ export function DocumentEditor({ dealId: propDealId }: DocumentEditorProps) {
       try {
         // Load template and data in parallel
         const [layoutResponse, data] = await Promise.all([
-          fetchPdfmeLayout(dealId),
-          fetchContractData(dealId),
+          fetchPdfmeLayout(dealId, documentType),
+          fetchContractData(dealId, documentType),
         ]);
 
         // Create and validate template
@@ -171,7 +172,7 @@ export function DocumentEditor({ dealId: propDealId }: DocumentEditorProps) {
 
     setSaving(true);
     try {
-      await saveContractData(dealId, contractData);
+      await saveContractData(dealId, contractData, documentType);
 
       // Invalidate cached queries so the header and other components get fresh data
       // The backend syncs buyer name and other fields to the deal, so we need to refetch

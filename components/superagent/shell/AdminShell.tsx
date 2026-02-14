@@ -1,6 +1,6 @@
 "use client";
 
-import { FileCheck, LayoutDashboard, Palette, Users } from "lucide-react";
+import { FileCheck, FlaskConical, LayoutDashboard, Palette, Users } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminTopBar } from "./AdminTopBar";
@@ -15,6 +15,7 @@ const ADMIN_NAV_ITEMS = [
     icon: FileCheck,
   },
   { label: "Users", href: "/admin/users", icon: Users },
+  { label: "QA Tests", href: "/qa-tests", icon: FlaskConical },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {

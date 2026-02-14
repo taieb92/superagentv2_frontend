@@ -55,6 +55,7 @@ export function useLivekitConnection(
         body: JSON.stringify({
           userId: guestToken ? `guest_${guestToken.substring(0, 8)}` : userId,
           participantName: "User",
+          ...(guestToken ? { guestToken } : {}),
         }),
       });
 

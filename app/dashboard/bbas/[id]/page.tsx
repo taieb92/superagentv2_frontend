@@ -79,7 +79,7 @@ function BbaDetailsContent() {
 
             {/* Document editor - flex-1 for proper PDF margin/space and zoom (same as contract) */}
             <div className="flex flex-col flex-1 min-h-[70vh] mt-6 sm:mt-8">
-              <DocumentEditor />
+              <DocumentEditor documentType="BBA" />
             </div>
           </div>
         </div>

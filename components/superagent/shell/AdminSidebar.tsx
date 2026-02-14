@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileCheck,
+  FlaskConical,
   LayoutDashboard,
   Palette,
   Users,
@@ -35,6 +36,11 @@ const NAV_ITEMS = [
     label: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    label: "QA Tests",
+    href: "/qa-tests",
+    icon: FlaskConical,
   },
 ];
 

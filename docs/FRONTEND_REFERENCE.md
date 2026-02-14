@@ -30,7 +30,7 @@ Complete inventory of the Next.js 16 frontend.
 | `/dashboard/profile` | Client | Agent profile editor (save-on-blur) |
 | `/dashboard/deals` | Client | Deal listing with filters/search/sort |
 | `/dashboard/deals/[id]` | Client | Deal detail — tabs: Contract, Addenda, Counters, Guests |
-| `/dashboard/deals/[id]/counteroffers/[counterId]` | Client | Counter offer detail |
+| `/dashboard/deals/[id]/counteroffers/[counterId]` | Client | Counter offer detail — loads pdfme template dynamically via `fetchPdfmeLayout(dealId, "COUNTEROFFERS")` and renders the pdfme viewer when the template is available |
 | `/dashboard/bbas` | Client | BBA listing with filters |
 | `/dashboard/bbas/[id]` | Client | BBA document editor |
 | `/dashboard/superagent` | Client | Voice session launcher + recent sessions |
