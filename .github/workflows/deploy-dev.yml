@@ -65,7 +65,7 @@ jobs:
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ secrets.DEV_PORT }}
           source: "deployment/docker-compose.dev.yml"
-          target: "/srv/apps/superagent/superagent-frontend/deployment"
+          target: "/srv/apps/superagent/superagent-frontend/docker-compose.dev.yml"
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
