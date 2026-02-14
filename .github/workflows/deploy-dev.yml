@@ -47,25 +47,18 @@ jobs:
       - name: Save image
         run: docker save superagent-frontend:dev | gzip > frontend-dev.tar.gz
 
-      - name: Copy image to server
+      - name: Copy files to server
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
           port: ${{ secrets.DEV_PORT }}
-          source: "frontend-dev.tar.gz"
-          target: "/srv/apps/superagent/superagent-frontend"
-
-      - name: Copy Docker Compose
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.DEV_HOST }}
-          username: ${{ secrets.DEV_USER }}
-          key: ${{ secrets.DEV_SSH_KEY }}
-          port: ${{ secrets.DEV_PORT }}
-          source: "deployment/docker-compose.dev.yml"
+          source: |
+            frontend-dev.tar.gz
+            deployment/docker-compose.dev.yml
           target: "/srv/apps/superagent/superagent-frontend/"
+          strip_components: 1
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
@@ -76,7 +69,11 @@ jobs:
           port: ${{ secrets.DEV_PORT }}
           script: |
             set -e
+
             cd /srv/apps/superagent/superagent-frontend
+
+            echo "🧹 Cleaning possible broken compose file..."
+            rm -rf docker-compose.dev.yml
 
             echo "📦 Loading Docker image..."
             docker load < frontend-dev.tar.gz
@@ -84,7 +81,10 @@ jobs:
             echo "🚀 Starting container..."
             docker compose -f docker-compose.dev.yml up -d --force-recreate
 
-            echo "🧹 Cleaning old images..."
+            echo "🧹 Cleaning unused images..."
             docker image prune -af || true
+
+            echo "🧹 Cleaning tar file..."
+            rm -f frontend-dev.tar.gz
 
             echo "✅ Deployment complete!"
