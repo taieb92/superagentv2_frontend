@@ -5,7 +5,7 @@ services:
     container_name: superagent-frontend-dev
     image: superagent-frontend:dev       # <-- Use the image built on GitHub
     env_file:
-      - .env.dev
+      - ../env.dev
     ports:
       - "3000:3000"
     extra_hosts:
